@@ -28,6 +28,7 @@ let speechSupported = false;
 let realtimeRecording = false;
 let hasResultInSession = false;
 let sessionFinalText = "";
+let lastRealtimeToggleAt = 0;
 
 let mediaRecorder = null;
 let accurateRecording = false;
@@ -273,6 +274,34 @@ function stopAllRecording() {
   stopAccurateRecording();
 }
 
+function canToggleRealtime() {
+  const now = Date.now();
+  if (now - lastRealtimeToggleAt < 450) return false;
+  lastRealtimeToggleAt = now;
+  return true;
+}
+
+function handleRealtimeToggle() {
+  if (engineSelect.value === "accurate") {
+    return;
+  }
+  if (!speechSupported) return;
+  if (!canToggleRealtime()) return;
+  if (realtimeRecording) {
+    stopRealtimeRecording();
+  } else {
+    recordBtn.textContent = "停止识别";
+    statusEl.textContent = "正在启动识别...";
+    startRealtimeRecording();
+  }
+}
+
+recordBtn.addEventListener("touchend", (event) => {
+  if (engineSelect.value !== "realtime") return;
+  event.preventDefault();
+  handleRealtimeToggle();
+});
+
 recordBtn.addEventListener("click", () => {
   if (engineSelect.value === "accurate") {
     if (accurateRecording) {
@@ -282,15 +311,7 @@ recordBtn.addEventListener("click", () => {
     }
     return;
   }
-
-  if (!speechSupported) return;
-  if (realtimeRecording) {
-    stopRealtimeRecording();
-  } else {
-    recordBtn.textContent = "停止识别";
-    statusEl.textContent = "正在启动识别...";
-    startRealtimeRecording();
-  }
+  handleRealtimeToggle();
 });
 
 saveBtn.addEventListener("click", () => {
