@@ -23,6 +23,7 @@ let recognition = null;
 let recording = false;
 let hasResultInSession = false;
 let sessionFinalText = "";
+let speechSupported = false;
 
 render();
 setupSpeech();
@@ -35,9 +36,15 @@ function setupSpeech() {
     statusEl.textContent = "当前浏览器不支持语音识别，请手动输入";
     return;
   }
+  speechSupported = true;
+  recordBtn.textContent = "按住说话";
+}
 
+function buildRecognition() {
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRecognition) return null;
   recognition = new SpeechRecognition();
-  recognition.continuous = true;
+  recognition.continuous = false;
   recognition.interimResults = true;
   recognition.lang = langSelect.value;
   recognition.maxAlternatives = 3;
@@ -47,8 +54,8 @@ function setupSpeech() {
     hasResultInSession = false;
     sessionFinalText = "";
     recordBtn.classList.add("recording");
-    recordBtn.textContent = "停止录音";
-    statusEl.textContent = "正在识别，请连续说话";
+    recordBtn.textContent = "松开结束";
+    statusEl.textContent = "正在识别，请说话";
   };
 
   recognition.onresult = (event) => {
@@ -92,23 +99,40 @@ function setupSpeech() {
   recognition.onend = () => {
     recording = false;
     recordBtn.classList.remove("recording");
-    recordBtn.textContent = "开始录音";
+    recordBtn.textContent = "按住说话";
     sessionFinalText = "";
     if (!hasResultInSession) {
       statusEl.textContent = "未识别到内容，请慢一点并靠近麦克风";
     }
   };
+
+  return recognition;
 }
 
-recordBtn.addEventListener("click", () => {
-  if (!recognition) return;
-  recognition.lang = langSelect.value;
-  if (recording) {
-    recognition.stop();
-  } else {
-    recognition.start();
+function startRecording() {
+  if (!speechSupported || recording) return;
+  const rec = buildRecognition();
+  if (!rec) return;
+  try {
+    rec.start();
+  } catch {
+    statusEl.textContent = "启动识别失败，请再试一次";
   }
+}
+
+function stopRecording() {
+  if (!recognition || !recording) return;
+  recognition.stop();
+}
+
+recordBtn.addEventListener("pointerdown", (event) => {
+  event.preventDefault();
+  startRecording();
 });
+
+recordBtn.addEventListener("pointerup", stopRecording);
+recordBtn.addEventListener("pointerleave", stopRecording);
+recordBtn.addEventListener("pointercancel", stopRecording);
 
 saveBtn.addEventListener("click", () => {
   const content = noteText.value.trim();
@@ -144,7 +168,7 @@ function render() {
 
   if (!items.length) {
     const empty = document.createElement("li");
-    empty.textContent = "还没有记录，点击“开始录音”开始。";
+    empty.textContent = "还没有记录，按住“按住说话”开始。";
     empty.className = "item";
     itemsEl.appendChild(empty);
     return;
