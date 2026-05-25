@@ -12,6 +12,7 @@ const saveBtn = document.getElementById("saveBtn");
 const clearBtn = document.getElementById("clearBtn");
 const wipeBtn = document.getElementById("wipeBtn");
 const noteText = document.getElementById("noteText");
+const langSelect = document.getElementById("lang");
 const typeSelect = document.getElementById("type");
 const itemsEl = document.getElementById("items");
 const statusEl = document.getElementById("status");
@@ -21,6 +22,7 @@ let items = loadItems();
 let recognition = null;
 let recording = false;
 let hasResultInSession = false;
+let sessionFinalText = "";
 
 render();
 setupSpeech();
@@ -35,26 +37,35 @@ function setupSpeech() {
   }
 
   recognition = new SpeechRecognition();
-  recognition.continuous = false;
-  recognition.interimResults = false;
-  recognition.lang = "zh-CN";
-  recognition.maxAlternatives = 1;
+  recognition.continuous = true;
+  recognition.interimResults = true;
+  recognition.lang = langSelect.value;
+  recognition.maxAlternatives = 3;
 
   recognition.onstart = () => {
     recording = true;
     hasResultInSession = false;
+    sessionFinalText = "";
     recordBtn.classList.add("recording");
-    recordBtn.textContent = "正在听...";
-    statusEl.textContent = "请说话";
+    recordBtn.textContent = "停止录音";
+    statusEl.textContent = "正在识别，请连续说话";
   };
 
   recognition.onresult = (event) => {
-    const transcript = event.results?.[0]?.[0]?.transcript?.trim() || "";
-    if (transcript) {
-      hasResultInSession = true;
-      noteText.value = noteText.value ? `${noteText.value} ${transcript}` : transcript;
-      statusEl.textContent = "已转文字，可直接保存";
+    let interimText = "";
+    for (let i = event.resultIndex; i < event.results.length; i += 1) {
+      const piece = event.results[i]?.[0]?.transcript?.trim() || "";
+      if (!piece) continue;
+      if (event.results[i].isFinal) {
+        sessionFinalText = `${sessionFinalText} ${piece}`.trim();
+        hasResultInSession = true;
+      } else {
+        interimText = `${interimText} ${piece}`.trim();
+      }
     }
+    const merged = `${sessionFinalText} ${interimText}`.trim();
+    if (merged) noteText.value = merged;
+    statusEl.textContent = interimText ? "正在识别中..." : "已转文字，可直接保存";
   };
 
   recognition.onerror = (event) => {
@@ -81,28 +92,23 @@ function setupSpeech() {
   recognition.onend = () => {
     recording = false;
     recordBtn.classList.remove("recording");
-    recordBtn.textContent = "按住说话";
+    recordBtn.textContent = "开始录音";
+    sessionFinalText = "";
     if (!hasResultInSession) {
-      statusEl.textContent = "未识别到内容，请按住按钮并清晰说话";
+      statusEl.textContent = "未识别到内容，请慢一点并靠近麦克风";
     }
   };
 }
 
-recordBtn.addEventListener("pointerdown", () => {
+recordBtn.addEventListener("click", () => {
   if (!recognition) return;
-  if (!recording) {
+  recognition.lang = langSelect.value;
+  if (recording) {
+    recognition.stop();
+  } else {
     recognition.start();
   }
 });
-
-const stopRecording = () => {
-  if (!recognition || !recording) return;
-  recognition.stop();
-};
-
-recordBtn.addEventListener("pointerup", stopRecording);
-recordBtn.addEventListener("pointerleave", stopRecording);
-recordBtn.addEventListener("pointercancel", stopRecording);
 
 saveBtn.addEventListener("click", () => {
   const content = noteText.value.trim();
@@ -138,7 +144,7 @@ function render() {
 
   if (!items.length) {
     const empty = document.createElement("li");
-    empty.textContent = "还没有记录，按下“按住说话”开始。";
+    empty.textContent = "还没有记录，点击“开始录音”开始。";
     empty.className = "item";
     itemsEl.appendChild(empty);
     return;
