@@ -72,24 +72,18 @@ body {
 }
 
 select,
-input,
 textarea,
 button {
   font: inherit;
 }
 
 select,
-input,
 textarea {
   width: 100%;
   border: 1px solid var(--line);
   border-radius: 12px;
   padding: 10px;
   background: #fbfcfd;
-}
-
-.hidden {
-  display: none;
 }
 
 .voice-row {

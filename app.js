@@ -1,5 +1,4 @@
 const STORAGE_KEY = "capture_items_v1";
-const API_KEY_STORAGE = "capture_openai_key_v1";
 
 const typeMap = {
   todo: "Todo",
@@ -14,9 +13,6 @@ const clearBtn = document.getElementById("clearBtn");
 const wipeBtn = document.getElementById("wipeBtn");
 const noteText = document.getElementById("noteText");
 const langSelect = document.getElementById("lang");
-const engineSelect = document.getElementById("engine");
-const apiRow = document.getElementById("apiRow");
-const apiKeyInput = document.getElementById("apiKey");
 const typeSelect = document.getElementById("type");
 const itemsEl = document.getElementById("items");
 const statusEl = document.getElementById("status");
@@ -25,65 +21,27 @@ const template = document.getElementById("itemTemplate");
 let items = loadItems();
 let recognition = null;
 let speechSupported = false;
-let realtimeRecording = false;
+let recording = false;
 let hasResultInSession = false;
-let sessionFinalText = "";
-let lastRealtimeToggleAt = 0;
-
-let mediaRecorder = null;
-let accurateRecording = false;
-let audioChunks = [];
-let mediaStream = null;
-let accurateMimeType = "";
+let finalTextInSession = "";
+let lastToggleAt = 0;
 
 render();
 setupSpeech();
-setupAccurateUI();
 
 function setupSpeech() {
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SpeechRecognition) {
     speechSupported = false;
-    if (engineSelect.value === "realtime") {
-      recordBtn.disabled = true;
-      statusEl.textContent = "当前浏览器不支持实时语音识别，请切换到高精度模式";
-    }
-    return;
-  }
-  speechSupported = true;
-}
-
-function setupAccurateUI() {
-  const savedKey = localStorage.getItem(API_KEY_STORAGE) || "";
-  apiKeyInput.value = savedKey;
-  engineSelect.addEventListener("change", refreshByEngine);
-  apiKeyInput.addEventListener("input", () => {
-    localStorage.setItem(API_KEY_STORAGE, apiKeyInput.value.trim());
-  });
-  refreshByEngine();
-}
-
-function refreshByEngine() {
-  stopAllRecording();
-
-  const accurate = engineSelect.value === "accurate";
-  apiRow.classList.toggle("hidden", !accurate);
-
-  if (accurate) {
-    recordBtn.disabled = false;
-    recordBtn.textContent = accurateRecording ? "停止录音" : "开始录音";
-    statusEl.textContent = "高精度模式：点击开始，再点击停止";
-    return;
-  }
-
-  recordBtn.textContent = "开始识别";
-  if (!speechSupported) {
     recordBtn.disabled = true;
-    statusEl.textContent = "当前浏览器不支持实时语音识别，请切换到高精度模式";
-  } else {
-    recordBtn.disabled = false;
-    statusEl.textContent = "实时模式：点击开始，再点击停止";
+    statusEl.textContent = "当前浏览器不支持语音识别，请手动输入";
+    return;
   }
+
+  speechSupported = true;
+  recordBtn.disabled = false;
+  recordBtn.textContent = "开始识别";
+  statusEl.textContent = "实时模式：点击开始，再点击停止";
 }
 
 function buildRecognition() {
@@ -97,9 +55,9 @@ function buildRecognition() {
   recognition.maxAlternatives = 3;
 
   recognition.onstart = () => {
-    realtimeRecording = true;
+    recording = true;
     hasResultInSession = false;
-    sessionFinalText = "";
+    finalTextInSession = "";
     recordBtn.classList.add("recording");
     recordBtn.textContent = "停止识别";
     statusEl.textContent = "正在识别，可连续说话";
@@ -111,13 +69,14 @@ function buildRecognition() {
       const piece = event.results[i]?.[0]?.transcript?.trim() || "";
       if (!piece) continue;
       if (event.results[i].isFinal) {
-        sessionFinalText = `${sessionFinalText} ${piece}`.trim();
+        finalTextInSession = `${finalTextInSession} ${piece}`.trim();
         hasResultInSession = true;
       } else {
         interimText = `${interimText} ${piece}`.trim();
       }
     }
-    const merged = `${sessionFinalText} ${interimText}`.trim();
+
+    const merged = `${finalTextInSession} ${interimText}`.trim();
     if (merged) noteText.value = merged;
     statusEl.textContent = interimText ? "正在识别中..." : "已转文字，可直接保存";
   };
@@ -144,13 +103,13 @@ function buildRecognition() {
   };
 
   recognition.onend = () => {
-    realtimeRecording = false;
+    recording = false;
     recordBtn.classList.remove("recording");
-    if (engineSelect.value === "realtime") recordBtn.textContent = "开始识别";
-    sessionFinalText = "";
-    if (!hasResultInSession && engineSelect.value === "realtime") {
+    recordBtn.textContent = "开始识别";
+    finalTextInSession = "";
+    if (!hasResultInSession) {
       statusEl.textContent = "未识别到内容，请慢一点并靠近麦克风";
-    } else if (engineSelect.value === "realtime") {
+    } else {
       statusEl.textContent = "识别已结束，点击可继续";
     }
   };
@@ -158,8 +117,8 @@ function buildRecognition() {
   return recognition;
 }
 
-function startRealtimeRecording() {
-  if (!speechSupported || realtimeRecording) return;
+function startRecording() {
+  if (!speechSupported || recording) return;
   const rec = buildRecognition();
   if (!rec) return;
   try {
@@ -169,154 +128,44 @@ function startRealtimeRecording() {
   }
 }
 
-function stopRealtimeRecording() {
-  if (recognition && realtimeRecording) recognition.stop();
-  if (engineSelect.value === "realtime") {
+function stopRecording() {
+  if (recognition && recording) recognition.stop();
+  if (speechSupported) {
     recordBtn.classList.remove("recording");
     recordBtn.textContent = "开始识别";
-    statusEl.textContent = "已停止识别";
   }
 }
 
-async function startAccurateRecording() {
-  if (accurateRecording) return;
-  try {
-    mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    audioChunks = [];
-    accurateMimeType = "";
-    if (window.MediaRecorder && MediaRecorder.isTypeSupported("audio/webm;codecs=opus")) {
-      accurateMimeType = "audio/webm;codecs=opus";
-    } else if (window.MediaRecorder && MediaRecorder.isTypeSupported("audio/mp4")) {
-      accurateMimeType = "audio/mp4";
-    }
-    mediaRecorder = accurateMimeType
-      ? new MediaRecorder(mediaStream, { mimeType: accurateMimeType })
-      : new MediaRecorder(mediaStream);
-    mediaRecorder.ondataavailable = (event) => {
-      if (event.data.size > 0) audioChunks.push(event.data);
-    };
-    mediaRecorder.onstop = transcribeAccurateAudio;
-    mediaRecorder.start();
-    accurateRecording = true;
-    recordBtn.classList.add("recording");
-    recordBtn.textContent = "停止录音";
-    statusEl.textContent = "高精度录音中...";
-  } catch {
-    statusEl.textContent = "无法启动麦克风，请检查权限";
-  }
-}
-
-function stopAccurateRecording() {
-  if (!mediaRecorder || !accurateRecording) return;
-  mediaRecorder.stop();
-  accurateRecording = false;
-  recordBtn.classList.remove("recording");
-  recordBtn.textContent = "开始录音";
-  stopMediaTracks();
-}
-
-async function transcribeAccurateAudio() {
-  const apiKey = (apiKeyInput.value || "").trim();
-  if (!apiKey) {
-    statusEl.textContent = "请先输入 OpenAI API Key";
-    return;
-  }
-  if (!audioChunks.length) {
-    statusEl.textContent = "未录到音频，请重试";
-    return;
-  }
-
-  statusEl.textContent = "正在高精度转写...";
-  try {
-    const blobType = accurateMimeType || audioChunks[0]?.type || "audio/webm";
-    const ext = blobType.includes("mp4") ? "mp4" : "webm";
-    const blob = new Blob(audioChunks, { type: blobType });
-    const formData = new FormData();
-    formData.append("file", blob, `capture.${ext}`);
-    formData.append("model", "gpt-4o-mini-transcribe");
-    formData.append("language", langSelect.value.slice(0, 2));
-
-    const res = await fetch("https://api.openai.com/v1/audio/transcriptions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: formData,
-    });
-
-    if (!res.ok) {
-      statusEl.textContent = "高精度转写失败，请检查 Key 或网络";
-      return;
-    }
-
-    const data = await res.json();
-    const text = (data.text || "").trim();
-    if (!text) {
-      statusEl.textContent = "没有识别到有效文字";
-      return;
-    }
-
-    noteText.value = noteText.value ? `${noteText.value} ${text}` : text;
-    statusEl.textContent = "高精度转写完成，可直接保存";
-  } catch {
-    statusEl.textContent = "转写请求失败，请稍后重试";
-  }
-}
-
-function stopMediaTracks() {
-  if (!mediaStream) return;
-  mediaStream.getTracks().forEach((track) => track.stop());
-  mediaStream = null;
-}
-
-function stopAllRecording() {
-  stopRealtimeRecording();
-  stopAccurateRecording();
-}
-
-function canToggleRealtime() {
+function canToggle() {
   const now = Date.now();
-  if (now - lastRealtimeToggleAt < 450) return false;
-  lastRealtimeToggleAt = now;
+  if (now - lastToggleAt < 450) return false;
+  lastToggleAt = now;
   return true;
 }
 
-function handleRealtimeToggle() {
-  if (engineSelect.value === "accurate") {
-    return;
-  }
-  if (!speechSupported) return;
-  if (!canToggleRealtime()) return;
-  if (realtimeRecording) {
-    stopRealtimeRecording();
+function toggleRecording() {
+  if (!speechSupported || !canToggle()) return;
+  if (recording) {
+    stopRecording();
   } else {
     recordBtn.textContent = "停止识别";
     statusEl.textContent = "正在启动识别...";
-    startRealtimeRecording();
+    startRecording();
   }
 }
 
 recordBtn.addEventListener("touchend", (event) => {
-  if (engineSelect.value !== "realtime") return;
   event.preventDefault();
-  handleRealtimeToggle();
+  toggleRecording();
 });
 
-recordBtn.addEventListener("click", () => {
-  if (engineSelect.value === "accurate") {
-    if (accurateRecording) {
-      stopAccurateRecording();
-    } else {
-      startAccurateRecording();
-    }
-    return;
-  }
-  handleRealtimeToggle();
-});
+recordBtn.addEventListener("click", toggleRecording);
 
 saveBtn.addEventListener("click", () => {
   const content = noteText.value.trim();
   if (!content) return;
+
+  stopRecording();
 
   items.unshift({
     id: crypto.randomUUID(),
@@ -328,7 +177,7 @@ saveBtn.addEventListener("click", () => {
   saveItems();
   render();
   noteText.value = "";
-  statusEl.textContent = "已保存";
+  statusEl.textContent = "已保存，并停止识别";
 });
 
 clearBtn.addEventListener("click", () => {
