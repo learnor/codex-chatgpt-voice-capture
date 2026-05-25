@@ -41,8 +41,21 @@
           </select>
         </div>
 
+        <div class="row">
+          <label for="engine">模式</label>
+          <select id="engine">
+            <option value="realtime">实时识别（浏览器）</option>
+            <option value="accurate">高精度识别（OpenAI）</option>
+          </select>
+        </div>
+
+        <div id="apiRow" class="row hidden">
+          <label for="apiKey">API Key</label>
+          <input id="apiKey" type="password" placeholder="sk-..." />
+        </div>
+
         <div class="voice-row">
-          <button id="recordBtn" class="record-btn" type="button">开始录音</button>
+          <button id="recordBtn" class="record-btn" type="button">按住说话</button>
           <p id="status" class="status">准备就绪</p>
         </div>
 
