@@ -25,17 +25,17 @@
       </header>
 
       <section class="input-card">
-        <div class="voice-row">
-          <button id="recordBtn" class="record-btn" type="button">开始识别</button>
-          <p id="status" class="status">准备就绪</p>
+        <label class="capture-label" for="noteText">快速记录</label>
+        <div class="dictation-card">
+          <textarea id="noteText" rows="5" placeholder="轻触这里，然后使用键盘上的麦克风说话..."></textarea>
+          <p class="dictation-hint">手机上请点击键盘的麦克风图标开始听写</p>
         </div>
-
-        <textarea id="noteText" rows="3" placeholder="也可以直接输入..."></textarea>
 
         <div class="actions">
           <button id="saveBtn" class="primary" type="button">保存</button>
           <button id="clearBtn" type="button">清空</button>
         </div>
+        <p id="status" class="status" aria-live="polite">等待输入</p>
       </section>
 
       <section class="list-card">
@@ -58,6 +58,6 @@
       </li>
     </template>
 
-    <script src="./app.js?v=2026.05.25.1510"></script>
+    <script src="./app.js?v=2026.05.26.1"></script>
   </body>
 </html>

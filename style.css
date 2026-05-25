@@ -60,8 +60,6 @@ body {
   box-shadow: var(--shadow);
 }
 
-.row,
-.voice-row,
 .actions,
 .list-head,
 .meta {
@@ -69,21 +67,17 @@ body {
   align-items: center;
 }
 
-.row,
-.voice-row,
 .actions,
 .list-head {
   justify-content: space-between;
   gap: 10px;
 }
 
-select,
 textarea,
 button {
   font: inherit;
 }
 
-select,
 textarea {
   width: 100%;
   border: 1px solid var(--line);
@@ -92,30 +86,47 @@ textarea {
   background: #fbfcfd;
 }
 
-.voice-row {
-  margin: 12px 0;
+.capture-label {
+  display: block;
+  margin-bottom: 10px;
+  font-weight: 500;
 }
 
-.record-btn {
+.dictation-card {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: #fbfcfd;
+  padding: 2px;
+}
+
+.dictation-card textarea {
   border: 0;
-  background: var(--accent);
-  color: #fff;
-  padding: 12px 18px;
-  border-radius: 999px;
-  cursor: pointer;
+  background: transparent;
+  min-height: 136px;
+  resize: vertical;
 }
 
-.record-btn.recording {
-  background: #0b5d4e;
+.dictation-card textarea:focus {
+  outline: 2px solid rgba(13, 124, 102, 0.18);
+  outline-offset: -2px;
+}
+
+.dictation-hint {
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 13px;
+  margin: 0 10px;
+  padding: 10px 0;
 }
 
 .status {
-  margin: 0;
+  margin: 12px 0 0;
   color: var(--muted);
   font-size: 14px;
-  text-align: right;
-  flex: 1;
-  min-width: 170px;
+}
+
+.actions {
+  margin-top: 12px;
 }
 
 button {
@@ -169,15 +180,6 @@ ul {
 }
 
 @media (max-width: 640px) {
-  .voice-row {
-    align-items: flex-start;
-    flex-wrap: wrap;
-  }
-
-  .status {
-    text-align: left;
-  }
-
   .actions,
   .list-head {
     flex-wrap: wrap;
