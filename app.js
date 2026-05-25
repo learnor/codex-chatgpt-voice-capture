@@ -1,5 +1,5 @@
 const STORAGE_KEY = "capture_items_v1";
-const APP_VERSION = "2026.05.25.1502";
+const APP_VERSION = "2026.05.25.1510";
 const VERSION_ENDPOINT = "./version.json";
 const VERSION_RELOAD_GUARD_KEY = "capture_reloaded_for_version";
 
@@ -15,7 +15,6 @@ const saveBtn = document.getElementById("saveBtn");
 const clearBtn = document.getElementById("clearBtn");
 const wipeBtn = document.getElementById("wipeBtn");
 const noteText = document.getElementById("noteText");
-const typeSelect = document.getElementById("type");
 const itemsEl = document.getElementById("items");
 const statusEl = document.getElementById("status");
 const versionEl = document.getElementById("version");
@@ -197,6 +196,39 @@ function toggleRecording() {
   }
 }
 
+function autoClassify(text) {
+  const t = text.toLowerCase();
+
+  const reminderHints = [
+    "提醒", "记得", "明天", "后天", "今晚", "今天", "下周", "deadline", "due", "before", "by ", "点", "号", "月", "日", "am", "pm",
+  ];
+  const todoHints = [
+    "要", "需要", "去", "做", "完成", "安排", "处理", "买", "修", "提交", "发送", "打电话", "todo", "task", "fix", "update",
+  ];
+  const ideaHints = [
+    "想法", "灵感", "也许", "可以", "尝试", "创意", "方案", "点子", "idea", "maybe", "could", "brainstorm",
+  ];
+
+  const score = { reminder: 0, todo: 0, idea: 0 };
+  reminderHints.forEach((k) => {
+    if (t.includes(k)) score.reminder += 1;
+  });
+  todoHints.forEach((k) => {
+    if (t.includes(k)) score.todo += 1;
+  });
+  ideaHints.forEach((k) => {
+    if (t.includes(k)) score.idea += 1;
+  });
+
+  if (/\b\d{1,2}(:|点)\d{0,2}\b/.test(text) || /\b(明天|后天|今晚|下周)\b/.test(text)) {
+    score.reminder += 2;
+  }
+
+  const top = Object.entries(score).sort((a, b) => b[1] - a[1])[0];
+  if (!top || top[1] === 0) return "other";
+  return top[0];
+}
+
 recordBtn.addEventListener("touchend", (event) => {
   event.preventDefault();
   toggleRecording();
@@ -209,10 +241,11 @@ saveBtn.addEventListener("click", () => {
   if (!content) return;
 
   stopRecording();
+  const autoType = autoClassify(content);
 
   items.unshift({
     id: crypto.randomUUID(),
-    type: typeSelect.value,
+    type: autoType,
     content,
     createdAt: new Date().toISOString(),
   });
@@ -220,7 +253,7 @@ saveBtn.addEventListener("click", () => {
   saveItems();
   render();
   noteText.value = "";
-  statusEl.textContent = "已保存，并停止识别";
+  statusEl.textContent = `已保存，并自动分类为：${typeMap[autoType]}`;
 });
 
 clearBtn.addEventListener("click", () => {
