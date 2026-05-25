@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Capture - 极简收集</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <main class="app">
+      <header class="hero">
+        <p class="eyebrow">VOICE CAPTURE</p>
+        <h1>一句话，先收集</h1>
+        <p class="sub">todo、灵感、提醒、杂事，先说出来，稍后整理。</p>
+      </header>
+
+      <section class="input-card">
+        <div class="row">
+          <label for="type">分类</label>
+          <select id="type">
+            <option value="todo">Todo</option>
+            <option value="idea">灵感</option>
+            <option value="reminder">提醒</option>
+            <option value="other">其他</option>
+          </select>
+        </div>
+
+        <div class="voice-row">
+          <button id="recordBtn" class="record-btn" type="button">按住说话</button>
+          <p id="status" class="status">准备就绪</p>
+        </div>
+
+        <textarea id="noteText" rows="3" placeholder="也可以直接输入..."></textarea>
+
+        <div class="actions">
+          <button id="saveBtn" class="primary" type="button">保存</button>
+          <button id="clearBtn" type="button">清空</button>
+        </div>
+      </section>
+
+      <section class="list-card">
+        <div class="list-head">
+          <h2>收集箱</h2>
+          <button id="wipeBtn" class="danger" type="button">清空全部</button>
+        </div>
+        <ul id="items"></ul>
+      </section>
+    </main>
+
+    <template id="itemTemplate">
+      <li class="item">
+        <div class="meta">
+          <span class="tag"></span>
+          <time></time>
+        </div>
+        <p class="content"></p>
+        <button class="delete-btn" type="button">删除</button>
+      </li>
+    </template>
+
+    <script src="./app.js"></script>
+  </body>
+</html>
