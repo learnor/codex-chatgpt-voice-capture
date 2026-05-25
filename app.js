@@ -1,4 +1,7 @@
 const STORAGE_KEY = "capture_items_v1";
+const APP_VERSION = "2026.05.25.1457";
+const VERSION_ENDPOINT = "./version.json";
+const VERSION_RELOAD_GUARD_KEY = "capture_reloaded_for_version";
 
 const typeMap = {
   todo: "Todo",
@@ -16,6 +19,7 @@ const langSelect = document.getElementById("lang");
 const typeSelect = document.getElementById("type");
 const itemsEl = document.getElementById("items");
 const statusEl = document.getElementById("status");
+const versionEl = document.getElementById("version");
 const template = document.getElementById("itemTemplate");
 
 let items = loadItems();
@@ -28,6 +32,34 @@ let lastToggleAt = 0;
 
 render();
 setupSpeech();
+renderVersion();
+checkForUpdate();
+
+function renderVersion() {
+  versionEl.textContent = `v${APP_VERSION}`;
+}
+
+async function checkForUpdate() {
+  try {
+    const res = await fetch(`${VERSION_ENDPOINT}?t=${Date.now()}`, { cache: "no-store" });
+    if (!res.ok) return;
+    const data = await res.json();
+    const remoteVersion = String(data.version || "").trim();
+    if (!remoteVersion || remoteVersion === APP_VERSION) {
+      sessionStorage.removeItem(VERSION_RELOAD_GUARD_KEY);
+      return;
+    }
+
+    const alreadyReloaded = sessionStorage.getItem(VERSION_RELOAD_GUARD_KEY) === remoteVersion;
+    if (alreadyReloaded) return;
+    sessionStorage.setItem(VERSION_RELOAD_GUARD_KEY, remoteVersion);
+    const nextUrl = new URL(window.location.href);
+    nextUrl.searchParams.set("v", remoteVersion);
+    window.location.replace(nextUrl.toString());
+  } catch {
+    // Ignore update check failures and keep app usable.
+  }
+}
 
 function setupSpeech() {
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
