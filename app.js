@@ -26,6 +26,7 @@ let items = loadItems();
 let recognition = null;
 let speechSupported = false;
 let realtimeRecording = false;
+let realtimeWanted = false;
 let hasResultInSession = false;
 let sessionFinalText = "";
 
@@ -75,13 +76,13 @@ function refreshByEngine() {
     return;
   }
 
-  recordBtn.textContent = "按住说话";
+  recordBtn.textContent = "开始识别";
   if (!speechSupported) {
     recordBtn.disabled = true;
     statusEl.textContent = "当前浏览器不支持实时语音识别，请切换到高精度模式";
   } else {
     recordBtn.disabled = false;
-    statusEl.textContent = "实时模式：按住说话，松开结束";
+    statusEl.textContent = "实时模式：点击开始，再点击停止";
   }
 }
 
@@ -100,8 +101,8 @@ function buildRecognition() {
     hasResultInSession = false;
     sessionFinalText = "";
     recordBtn.classList.add("recording");
-    recordBtn.textContent = "松开结束";
-    statusEl.textContent = "正在识别，请说话";
+    recordBtn.textContent = "停止识别";
+    statusEl.textContent = "正在识别，可连续说话";
   };
 
   recognition.onresult = (event) => {
@@ -145,9 +146,16 @@ function buildRecognition() {
   recognition.onend = () => {
     realtimeRecording = false;
     recordBtn.classList.remove("recording");
-    if (engineSelect.value === "realtime") {
-      recordBtn.textContent = "按住说话";
+    if (engineSelect.value === "realtime" && realtimeWanted) {
+      statusEl.textContent = "继续识别中...";
+      setTimeout(() => {
+        if (engineSelect.value === "realtime" && realtimeWanted && !realtimeRecording) {
+          startRealtimeRecording();
+        }
+      }, 150);
+      return;
     }
+    if (engineSelect.value === "realtime") recordBtn.textContent = "开始识别";
     sessionFinalText = "";
     if (!hasResultInSession) {
       statusEl.textContent = "未识别到内容，请慢一点并靠近麦克风";
@@ -169,8 +177,13 @@ function startRealtimeRecording() {
 }
 
 function stopRealtimeRecording() {
-  if (!recognition || !realtimeRecording) return;
-  recognition.stop();
+  realtimeWanted = false;
+  if (recognition && realtimeRecording) recognition.stop();
+  if (engineSelect.value === "realtime") {
+    recordBtn.classList.remove("recording");
+    recordBtn.textContent = "开始识别";
+    statusEl.textContent = "已停止识别";
+  }
 }
 
 async function startAccurateRecording() {
@@ -265,38 +278,30 @@ function stopMediaTracks() {
 }
 
 function stopAllRecording() {
+  realtimeWanted = false;
   stopRealtimeRecording();
   stopAccurateRecording();
 }
 
 recordBtn.addEventListener("click", () => {
-  if (engineSelect.value !== "accurate") return;
-  if (accurateRecording) {
-    stopAccurateRecording();
-  } else {
-    startAccurateRecording();
+  if (engineSelect.value === "accurate") {
+    if (accurateRecording) {
+      stopAccurateRecording();
+    } else {
+      startAccurateRecording();
+    }
+    return;
   }
-});
 
-recordBtn.addEventListener("pointerdown", (event) => {
-  if (engineSelect.value !== "realtime") return;
-  event.preventDefault();
-  startRealtimeRecording();
-});
-
-recordBtn.addEventListener("pointerup", () => {
-  if (engineSelect.value !== "realtime") return;
-  stopRealtimeRecording();
-});
-
-recordBtn.addEventListener("pointerleave", () => {
-  if (engineSelect.value !== "realtime") return;
-  stopRealtimeRecording();
-});
-
-recordBtn.addEventListener("pointercancel", () => {
-  if (engineSelect.value !== "realtime") return;
-  stopRealtimeRecording();
+  if (!speechSupported) return;
+  if (realtimeWanted) {
+    stopRealtimeRecording();
+  } else {
+    realtimeWanted = true;
+    recordBtn.textContent = "停止识别";
+    statusEl.textContent = "正在启动识别...";
+    startRealtimeRecording();
+  }
 });
 
 saveBtn.addEventListener("click", () => {
