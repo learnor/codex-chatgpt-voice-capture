@@ -26,7 +26,6 @@ let items = loadItems();
 let recognition = null;
 let speechSupported = false;
 let realtimeRecording = false;
-let realtimeWanted = false;
 let hasResultInSession = false;
 let sessionFinalText = "";
 
@@ -91,7 +90,7 @@ function buildRecognition() {
   if (!SpeechRecognition) return null;
 
   recognition = new SpeechRecognition();
-  recognition.continuous = false;
+  recognition.continuous = true;
   recognition.interimResults = true;
   recognition.lang = langSelect.value;
   recognition.maxAlternatives = 3;
@@ -146,19 +145,12 @@ function buildRecognition() {
   recognition.onend = () => {
     realtimeRecording = false;
     recordBtn.classList.remove("recording");
-    if (engineSelect.value === "realtime" && realtimeWanted) {
-      statusEl.textContent = "继续识别中...";
-      setTimeout(() => {
-        if (engineSelect.value === "realtime" && realtimeWanted && !realtimeRecording) {
-          startRealtimeRecording();
-        }
-      }, 150);
-      return;
-    }
     if (engineSelect.value === "realtime") recordBtn.textContent = "开始识别";
     sessionFinalText = "";
-    if (!hasResultInSession) {
+    if (!hasResultInSession && engineSelect.value === "realtime") {
       statusEl.textContent = "未识别到内容，请慢一点并靠近麦克风";
+    } else if (engineSelect.value === "realtime") {
+      statusEl.textContent = "识别已结束，点击可继续";
     }
   };
 
@@ -177,7 +169,6 @@ function startRealtimeRecording() {
 }
 
 function stopRealtimeRecording() {
-  realtimeWanted = false;
   if (recognition && realtimeRecording) recognition.stop();
   if (engineSelect.value === "realtime") {
     recordBtn.classList.remove("recording");
@@ -278,7 +269,6 @@ function stopMediaTracks() {
 }
 
 function stopAllRecording() {
-  realtimeWanted = false;
   stopRealtimeRecording();
   stopAccurateRecording();
 }
@@ -294,10 +284,9 @@ recordBtn.addEventListener("click", () => {
   }
 
   if (!speechSupported) return;
-  if (realtimeWanted) {
+  if (realtimeRecording) {
     stopRealtimeRecording();
   } else {
-    realtimeWanted = true;
     recordBtn.textContent = "停止识别";
     statusEl.textContent = "正在启动识别...";
     startRealtimeRecording();
