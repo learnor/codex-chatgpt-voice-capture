@@ -1,5 +1,5 @@
 const STORAGE_KEY = "capture_items_v1";
-const APP_VERSION = "2026.05.25.1457";
+const APP_VERSION = "2026.05.25.1502";
 const VERSION_ENDPOINT = "./version.json";
 const VERSION_RELOAD_GUARD_KEY = "capture_reloaded_for_version";
 
@@ -15,7 +15,6 @@ const saveBtn = document.getElementById("saveBtn");
 const clearBtn = document.getElementById("clearBtn");
 const wipeBtn = document.getElementById("wipeBtn");
 const noteText = document.getElementById("noteText");
-const langSelect = document.getElementById("lang");
 const typeSelect = document.getElementById("type");
 const itemsEl = document.getElementById("items");
 const statusEl = document.getElementById("status");
@@ -29,6 +28,7 @@ let recording = false;
 let hasResultInSession = false;
 let finalTextInSession = "";
 let lastToggleAt = 0;
+let detectedLang = "zh-CN";
 
 render();
 setupSpeech();
@@ -71,9 +71,20 @@ function setupSpeech() {
   }
 
   speechSupported = true;
+  detectedLang = detectSpeechLanguage();
   recordBtn.disabled = false;
   recordBtn.textContent = "开始识别";
-  statusEl.textContent = "实时模式：点击开始，再点击停止";
+  statusEl.textContent = `实时模式：自动语言 ${detectedLang}，点击开始`;
+}
+
+function detectSpeechLanguage() {
+  const raw = (navigator.languages && navigator.languages[0]) || navigator.language || "zh-CN";
+  const norm = String(raw).toLowerCase();
+  if (norm.startsWith("zh-tw") || norm.startsWith("zh-hk")) return "zh-TW";
+  if (norm.startsWith("zh")) return "zh-CN";
+  if (norm.startsWith("ja")) return "ja-JP";
+  if (norm.startsWith("en")) return "en-US";
+  return "zh-CN";
 }
 
 function buildRecognition() {
@@ -83,7 +94,7 @@ function buildRecognition() {
   recognition = new SpeechRecognition();
   recognition.continuous = true;
   recognition.interimResults = true;
-  recognition.lang = langSelect.value;
+  recognition.lang = detectedLang;
   recognition.maxAlternatives = 3;
 
   recognition.onstart = () => {
